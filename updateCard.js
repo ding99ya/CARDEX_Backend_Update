@@ -1,5 +1,6 @@
-const { Contract, providers, BigNumber } = require("ethers");
 const abi = require("./CardexV1.json");
+const { Contract, providers, BigNumber } = require("ethers");
+const ethers = require("ethers");
 
 const mongoose = require("mongoose");
 // const CardModel = require("./models/CardModel");
@@ -256,9 +257,13 @@ const loadUserShares = async (id, address) => {
 // Function to transfer current price to a format with 3 decimals (X.XXX ETH)
 const getPrice = async (id) => {
   const price = await loadCurrentPrice(id);
-  const priceToBigNumber = BigNumber.from(price);
-  const oneEther = BigNumber.from("1000000000000000000");
-  const priceInETH = Number(priceToBigNumber.mul(10000).div(oneEther)) / 10000;
+  console.log(price);
+  // const priceToBigNumber = ethers.BigNumber.from(price);
+  const priceToBigNumber = web3.utils.toBN(price.toString());
+  // const oneEther = ethers.BigNumber.from("1000000000000000000");
+  const oneEther = web3.utils.toBN("1000000000000000000");
+  const priceInETH =
+    Number(priceToBigNumber.mul(web3.utils.toBN(10000)).div(oneEther)) / 10000;
 
   return priceInETH;
 };
