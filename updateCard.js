@@ -15,7 +15,7 @@ mongoose
 // Alchemy configuration to fetch info from blockchain and set up info
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const alchemyKey =
-  "wss://base-sepolia.g.alchemy.com/v2/9CJFODeY1tvRhobyTvaylvYe4F7oOacS";
+  "wss://base-sepolia.g.alchemy.com/v2/wMbCgZrHMGP75QlXkB6LtcKOKDb4BHfg";
 const web3 = createAlchemyWeb3(alchemyKey);
 
 // CardexV1 address on Base Sepolia
