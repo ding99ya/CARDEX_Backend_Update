@@ -28,7 +28,9 @@ const contract = new web3.eth.Contract(abi, CONTRACT_ADDR);
 const cardSchema = new mongoose.Schema({
   name: String,
   photo: String,
+  backPhoto: String,
   uniqueId: { type: String, unique: true },
+  rarity: String,
   ipoTime: String,
   price: Number,
   category: String,
@@ -207,6 +209,13 @@ const updateUsersWhenSell = async (walletAddress, uniqueId, shares) => {
         // If selling and card doesn't exist, add the new card to the inventory
         user.cardInventory.push({ uniqueId, shares });
         await user.save();
+        if (user.cardInventory[cardIndex].shares === 0) {
+          user.cardInventory.splice(cardIndex, 1);
+          console.log(
+            `Removed Card ${uniqueId} from user's ${walletAddress} inventory as shares dropped to 0`
+          );
+        }
+        await user.save();
         console.log(
           `Added Card ${uniqueId} to user's ${walletAddress} inventory`
         );
@@ -281,6 +290,77 @@ const getTrend = (currentPrice, lastPrice) => {
   );
   return Number(priceTrend).toFixed(2);
 };
+
+// function to add listener to Trade() event onchain so that Trade() event can trigger update for cards, prices and users
+function addTradeListener() {
+  console.log("Trade Listener Started");
+  contract.events.Trade({}, async (error, data) => {
+    if (error) {
+      console.log(`Error when listening to Trade event: `, error);
+    } else {
+      const isBuy = data.returnValues[2];
+
+      try {
+        const cardID = data.returnValues[0];
+
+        const trader = data.returnValues[1];
+
+        const currentPrice = await getPrice(Number(cardID));
+
+        const currentShareHolders = await getHolders(Number(cardID));
+
+        const card = await Card.findOne(
+          { uniqueId: cardID.toString() },
+          "lastPrice"
+        );
+
+        const currentTrend = getTrend(
+          Number(currentPrice),
+          Number(card.lastPrice)
+        );
+
+        updateCard(
+          cardID.toString(),
+          Number(currentPrice),
+          currentTrend,
+          Number(currentShareHolders)
+        );
+
+        // const currentTime = new Date();
+
+        // updateOrCreatePrice(
+        //   cardID.toString(),
+        //   Number(currentPrice),
+        //   currentTime
+        // );
+
+        const currentTraderShares = await loadUserShares(
+          Number(cardID),
+          trader
+        );
+
+        if (isBuy) {
+          updateUsersWhenBuy(
+            trader.toString(),
+            cardID.toString(),
+            Number(currentTraderShares)
+          );
+        } else {
+          updateUsersWhenSell(
+            trader.toString(),
+            cardID.toString(),
+            Number(currentTraderShares)
+          );
+        }
+      } catch (error) {
+        console.log(
+          `Error when listening to Trade event for card ${cardID} and try to update for ${trader}: `,
+          error
+        );
+      }
+    }
+  });
+}
 
 // function to add listener to Buy() event onchain so that Buy() event can trigger update for cards, prices and users
 function addBuyListener() {
@@ -397,8 +477,8 @@ function addSellListener() {
   });
 }
 
-addBuyListener();
-addSellListener();
+addTradeListener();
+// addBuyListener();
+// addSellListener();
 
 // TODO: Need to also create card and update/create user inventory for IPOCard event
-// TODO: Need to update lastPrice every 24 hours, maybe in other script
