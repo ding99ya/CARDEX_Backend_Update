@@ -81,9 +81,7 @@ const users = mongoose.model("users", usersSchema);
 
 // Define the holders schema
 const holderSchema = new mongoose.Schema({
-  name: { type: String, required: true },
   username: { type: String, required: true },
-  profilePhoto: { type: String, required: true },
   shares: { type: Number, required: true },
 });
 
@@ -99,9 +97,7 @@ const cardHolders = mongoose.model("cardHolders", cardHolderSchema);
 // Define the activities schems
 const activitySchema = new mongoose.Schema({
   time: { type: Date, required: true },
-  name: { type: String, required: true },
   username: { type: String, required: true },
-  profilePhoto: { type: String, required: true },
   isBuy: { type: Boolean, require: true },
   shares: { type: Number, required: true },
   ethAmount: { type: Number, required: true },
@@ -169,13 +165,7 @@ const updateOrCreatePrice = async (uniqueId, newPrice, newTime) => {
 };
 
 // Function to update or create a card holder
-const updateOrCreateCardHolder = async (
-  uniqueId,
-  name,
-  username,
-  profilePhoto,
-  shares
-) => {
+const updateOrCreateCardHolder = async (uniqueId, username, shares) => {
   try {
     const existingCardHolder = await cardHolders.findOne({ uniqueId });
 
@@ -197,9 +187,7 @@ const updateOrCreateCardHolder = async (
         // If the holder does not exist, add a new holder
         if (shares !== 0) {
           existingCardHolder.holders.push({
-            name,
             username,
-            profilePhoto,
             shares,
           });
         }
@@ -214,9 +202,7 @@ const updateOrCreateCardHolder = async (
         uniqueId,
         holders: [
           {
-            name: name,
             username: username,
-            profilePhoto: profilePhoto,
             shares: shares,
           },
         ],
@@ -245,47 +231,43 @@ const updateCardHoldersAndActivity = async (
     const user = await users.findOne({ walletAddress });
 
     if (user && user.DID !== "0") {
-      const privyUrl = `https://auth.privy.io/api/v1/users/${user.DID}`;
+      // const privyUrl = `https://auth.privy.io/api/v1/users/${user.DID}`;
 
-      const response = await axios.get(privyUrl, {
-        headers: {
-          Authorization: `Basic ${btoa(
-            process.env.PRIVY_APP_ID + ":" + process.env.PRIVY_APP_SECRET
-          )}`,
-          "privy-app-id": process.env.PRIVY_APP_ID,
-        },
-      });
-      const userTwitter = response.data.linked_accounts.find(
-        (account) => account.type === "twitter_oauth"
-      );
-      const name = userTwitter.name;
-      const username = userTwitter.username;
-      const profilePhoto = userTwitter.profile_picture_url;
+      // const response = await axios.get(privyUrl, {
+      //   headers: {
+      //     Authorization: `Basic ${btoa(
+      //       process.env.PRIVY_APP_ID + ":" + process.env.PRIVY_APP_SECRET
+      //     )}`,
+      //     "privy-app-id": process.env.PRIVY_APP_ID,
+      //   },
+      // });
+      // const userTwitter = response.data.linked_accounts.find(
+      //   (account) => account.type === "twitter_oauth"
+      // );
+      // const name = userTwitter.name;
+      const username = user.username;
+      // const profilePhoto = userTwitter.profile_picture_url;
       const time = new Date();
-      updateOrCreateCardHolder(uniqueId, name, username, profilePhoto, shares);
+      updateOrCreateCardHolder(uniqueId, username, shares);
       updateOrCreateCardActivity(
         uniqueId,
         time,
-        name,
         username,
-        profilePhoto,
         isBuy,
         deltaShares,
         ethAmount
       );
     } else if (user && user.DID === "0") {
-      const name = walletAddress.slice(0, 6);
+      // const name = walletAddress.slice(0, 6);
       const username = walletAddress.slice(0, 6);
-      const profilePhoto =
-        "https://cardsimage.s3.amazonaws.com/default/loading.jpg";
+      // const profilePhoto =
+      //   "https://cardsimage.s3.amazonaws.com/default/loading.jpg";
       const time = new Date();
-      updateOrCreateCardHolder(uniqueId, name, username, profilePhoto, shares);
+      updateOrCreateCardHolder(uniqueId, username, shares);
       updateOrCreateCardActivity(
         uniqueId,
         time,
-        name,
         username,
-        profilePhoto,
         isBuy,
         deltaShares,
         ethAmount
@@ -300,9 +282,7 @@ const updateCardHoldersAndActivity = async (
 const updateOrCreateCardActivity = async (
   uniqueId,
   time,
-  name,
   username,
-  profilePhoto,
   isBuy,
   shares,
   ethAmount
@@ -314,9 +294,7 @@ const updateOrCreateCardActivity = async (
       // If the document exists, update the priceHistory
       existingCardActivity.activity.unshift({
         time: time,
-        name: name,
         username: username,
-        profilePhoto: profilePhoto,
         isBuy: isBuy,
         shares: shares,
         ethAmount: ethAmount,
@@ -331,9 +309,7 @@ const updateOrCreateCardActivity = async (
         activity: [
           {
             time: time,
-            name: name,
             username: username,
-            profilePhoto: profilePhoto,
             isBuy: isBuy,
             shares: shares,
             ethAmount: ethAmount,
