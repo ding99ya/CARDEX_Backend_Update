@@ -19,7 +19,7 @@ const alchemyKey =
 const web3 = createAlchemyWeb3(alchemyKey);
 
 // CardexV1 address on Base Sepolia
-const CONTRACT_ADDR = "0x1141887622ae18a166c2Cc5F7abfb7a3E4ea85fE";
+const CONTRACT_ADDR = "0x0B6afc7727A30B867533d70d0d08F40d5cF07Ea9";
 
 // CardexV1 contract instance
 const contract = new web3.eth.Contract(abi, CONTRACT_ADDR);
@@ -37,9 +37,6 @@ const cardSchema = new mongoose.Schema({
   lastPrice: Number,
   trend: Number,
   shares: Number,
-  initialSharesPrice: Number,
-  ipoSharesPrice: Number,
-  ipoShares: Number,
 });
 
 // Create the model
