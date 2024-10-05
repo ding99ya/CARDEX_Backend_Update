@@ -36,6 +36,20 @@
   },
   {
     "type": "function",
+    "name": "batchSetTradeStage",
+    "inputs": [
+      { "name": "ids", "type": "uint256[]", "internalType": "uint256[]" },
+      {
+        "name": "tradeStage",
+        "type": "uint8",
+        "internalType": "enum CardexV1.TradeStage"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "boughtShares",
     "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
     "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
@@ -77,41 +91,26 @@
     "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
     "outputs": [
       { "name": "cardName", "type": "string", "internalType": "string" },
+      { "name": "frontImage", "type": "string", "internalType": "string" },
+      { "name": "backImage", "type": "string", "internalType": "string" },
       {
         "name": "cardInitialOwner",
         "type": "address",
         "internalType": "address"
-      },
-      { "name": "cardIPOTime", "type": "uint256", "internalType": "uint256" },
-      {
-        "name": "initialSharesPrice",
-        "type": "uint256",
-        "internalType": "uint256"
       },
       {
         "name": "initialOwnerShares",
         "type": "uint256",
         "internalType": "uint256"
       },
-      { "name": "ipoShares", "type": "uint256", "internalType": "uint256" },
-      {
-        "name": "ipoSharesPrice",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
+      { "name": "cardIPOTime", "type": "uint256", "internalType": "uint256" },
+      { "name": "priceFactor", "type": "uint256", "internalType": "uint256" },
       {
         "name": "tradeStage",
         "type": "uint8",
         "internalType": "enum CardexV1.TradeStage"
       }
     ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "cardsQ",
-    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
-    "outputs": [{ "name": "", "type": "uint256", "internalType": "UD60x18" }],
     "stateMutability": "view"
   },
   {
@@ -213,10 +212,17 @@
         "internalType": "struct CardexV1.Card",
         "components": [
           { "name": "cardName", "type": "string", "internalType": "string" },
+          { "name": "frontImage", "type": "string", "internalType": "string" },
+          { "name": "backImage", "type": "string", "internalType": "string" },
           {
             "name": "cardInitialOwner",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "initialOwnerShares",
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "cardIPOTime",
@@ -224,18 +230,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "initialSharesPrice",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "initialOwnerShares",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          { "name": "ipoShares", "type": "uint256", "internalType": "uint256" },
-          {
-            "name": "ipoSharesPrice",
+            "name": "priceFactor",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -633,12 +628,6 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      },
-      {
-        "name": "boughtShares",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -668,23 +657,5 @@
     "type": "error",
     "name": "ECDSAInvalidSignatureS",
     "inputs": [{ "name": "s", "type": "bytes32", "internalType": "bytes32" }]
-  },
-  {
-    "type": "error",
-    "name": "PRBMath_MulDiv18_Overflow",
-    "inputs": [
-      { "name": "x", "type": "uint256", "internalType": "uint256" },
-      { "name": "y", "type": "uint256", "internalType": "uint256" }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "PRBMath_UD60x18_Exp2_InputTooBig",
-    "inputs": [{ "name": "x", "type": "uint256", "internalType": "UD60x18" }]
-  },
-  {
-    "type": "error",
-    "name": "PRBMath_UD60x18_Log_InputTooSmall",
-    "inputs": [{ "name": "x", "type": "uint256", "internalType": "UD60x18" }]
   }
 ]
