@@ -34,8 +34,6 @@ const cardSchema = new mongoose.Schema({
   ipoTime: String,
   price: Number,
   category: String,
-  lastPrice: Number,
-  trend: Number,
   shares: Number,
 });
 
@@ -110,12 +108,12 @@ const cardActivitySchema = new mongoose.Schema({
 const CardActivity = mongoose.model("cardActivity", cardActivitySchema);
 
 // Function to update the info for a specific card including latest price, trend and share holders
-const updateCard = async (uniqueId, newPrice, newTrend, newShares) => {
+const updateCard = async (uniqueId, newPrice, newShares) => {
   try {
     // find the card with specific uniqueId and then update it
     const updateResult = await Card.updateOne(
       { uniqueId: uniqueId },
-      { $set: { price: newPrice, trend: newTrend, shares: newShares } }
+      { $set: { price: newPrice, shares: newShares } }
     );
 
     console.log(`Card ${uniqueId} info updated`);
@@ -517,15 +515,9 @@ function addTradeListener() {
           "lastPrice"
         );
 
-        const currentTrend = getTrend(
-          Number(currentPrice),
-          Number(card.lastPrice)
-        );
-
         updateCard(
           cardID.toString(),
           Number(currentPrice),
-          currentTrend,
           Number(currentShareHolders)
         );
 
@@ -595,15 +587,9 @@ function addBuyListener() {
           "lastPrice"
         );
 
-        const currentTrend = getTrend(
-          Number(currentPrice),
-          Number(card.lastPrice)
-        );
-
         updateCard(
           cardID.toString(),
           Number(currentPrice),
-          currentTrend,
           Number(currentShareHolders)
         );
 
@@ -653,15 +639,9 @@ function addSellListener() {
           "lastPrice"
         );
 
-        const currentTrend = getTrend(
-          Number(currentPrice),
-          Number(card.lastPrice)
-        );
-
         updateCard(
           cardID.toString(),
           Number(currentPrice),
-          currentTrend,
           Number(currentShareHolders)
         );
 
