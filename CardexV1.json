@@ -91,6 +91,12 @@
     "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
     "outputs": [
       { "name": "cardName", "type": "string", "internalType": "string" },
+      { "name": "category", "type": "string", "internalType": "string" },
+      {
+        "name": "rarity",
+        "type": "uint8",
+        "internalType": "enum CardexV1.Rarity"
+      },
       { "name": "frontImage", "type": "string", "internalType": "string" },
       { "name": "backImage", "type": "string", "internalType": "string" },
       {
@@ -212,6 +218,12 @@
         "internalType": "struct CardexV1.Card",
         "components": [
           { "name": "cardName", "type": "string", "internalType": "string" },
+          { "name": "category", "type": "string", "internalType": "string" },
+          {
+            "name": "rarity",
+            "type": "uint8",
+            "internalType": "enum CardexV1.Rarity"
+          },
           { "name": "frontImage", "type": "string", "internalType": "string" },
           { "name": "backImage", "type": "string", "internalType": "string" },
           {
@@ -518,6 +530,18 @@
     "inputs": [
       {
         "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "initialOwner",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "initialOwnerShares",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
