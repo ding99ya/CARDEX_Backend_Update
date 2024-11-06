@@ -168,17 +168,17 @@ const updateCardScore = async (uniqueId, shares) => {
 
     let newCurrentTournamentScore = card.currentTournamentScore;
 
-    if (
-      (currentDay > 0 && currentDay < 4) ||
-      (currentDay === 4 && currentHour < 12)
-    ) {
-      const tournamentStartDays = currentDay - 1;
+    // if (
+    //   (currentDay > 0 && currentDay < 4) ||
+    //   (currentDay === 4 && currentHour < 12)
+    // ) {
+    const tournamentStartDays = currentDay - 1;
 
-      newCurrentTournamentScore = Number(
-        (card.avgTournamentScore * tournamentStartDays + newDailyScore) /
-          (tournamentStartDays + 1)
-      ).toFixed(2);
-    }
+    newCurrentTournamentScore = Number(
+      (card.avgTournamentScore * tournamentStartDays + newDailyScore) /
+        (tournamentStartDays + 1)
+    ).toFixed(2);
+    // }
 
     await Card.updateOne(
       { uniqueId: uniqueId },
