@@ -65,6 +65,7 @@ require("dotenv").config();
     if (bulkOps.length > 0) {
       await CardModel.bulkWrite(bulkOps);
       console.log("Card scores updated successfully");
+      console.log("Script started at:", new Date().toString());
     } else {
       console.log("No cards found for updating.");
     }
