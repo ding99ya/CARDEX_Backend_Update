@@ -30,9 +30,11 @@ require("dotenv").config();
 
       const newCurrentScore = newAvgScore;
 
+      const tournamentStartDays = currentDay - 1;
+
       const newAvgTournamentScore = Number(
-        (card.avgTournamentScore * differenceInDays + card.dayScore) /
-          (differenceInDays + 1)
+        (card.avgTournamentScore * tournamentStartDays + card.dayScore) /
+          (tournamentStartDays + 1)
       ).toFixed(2);
 
       const newCurrentTournamentScore = newAvgTournamentScore;
