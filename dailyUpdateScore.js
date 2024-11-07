@@ -30,6 +30,8 @@ require("dotenv").config();
 
       const newCurrentScore = newAvgScore;
 
+      const currentDay = cstTime.getDay();
+
       const tournamentStartDays = currentDay - 1;
 
       const newAvgTournamentScore = Number(
