@@ -4,7 +4,7 @@ module.exports = {
       name: "dailyUpdateScore",
       script: "/home/ec2-user/CARDEX_Backend_Update/dailyUpdateScore.js",
       // script: "/Users/yiaoding/CARDEX_Backend_Update/dailyUpdateScore.js",
-      cron_restart: "25 18 * * *",
+      cron_restart: "00 06 * * *",
       autorestart: false,
       env: {
         TZ: "America/Chicago",

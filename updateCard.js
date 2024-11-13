@@ -46,7 +46,7 @@ const Card = mongoose.model("Card", cardSchema);
 // Define the price history schema
 const priceHistorySchema = new mongoose.Schema({
   price: { type: Number, required: true },
-  time: { type: Date, required: true },
+  time: { type: String, required: true },
 });
 
 // Define the prices schema
@@ -198,6 +198,17 @@ const updateCardScore = async (uniqueId, shares) => {
   }
 };
 
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
 // Function to update or create a price history
 const updateOrCreatePrice = async (uniqueId, newPrice, newTime) => {
   try {
@@ -207,14 +218,14 @@ const updateOrCreatePrice = async (uniqueId, newPrice, newTime) => {
       // If the document exists, update the priceHistory
       existingDocument.priceHistory.push({ price: newPrice, time: newTime });
 
-      // Check if priceHistory length exceeds 50
-      if (existingDocument.priceHistory.length > 50) {
-        // Remove excess elements from the beginning
-        existingDocument.priceHistory.splice(
-          0,
-          existingDocument.priceHistory.length - 50
-        );
-      }
+      // Check if priceHistory length exceeds 100
+      // if (existingDocument.priceHistory.length > 100) {
+      //   // Remove excess elements from the beginning
+      //   existingDocument.priceHistory.splice(
+      //     0,
+      //     existingDocument.priceHistory.length - 100
+      //   );
+      // }
 
       await existingDocument.save();
       console.log(`Updated priceHistory for Card ${uniqueId}`);
@@ -728,6 +739,14 @@ function addTradeListener() {
           Number(currentShareHolders)
         );
 
+        const currentTime = new Date();
+
+        updateOrCreatePrice(
+          cardID.toString(),
+          Number(currentPrice),
+          formatDate(currentTime)
+        );
+
         updateCardScore(cardID.toString(), Number(deltaShares));
 
         const currentTraderShares = await loadUserShares(
@@ -799,7 +818,7 @@ function addBuyListener() {
         updateOrCreatePrice(
           cardID.toString(),
           Number(currentPrice),
-          currentTime
+          formatDate(currentTime)
         );
 
         const currentBuyerShares = await loadUserShares(Number(cardID), buyer);
@@ -848,7 +867,11 @@ function addSellListener() {
 
         const currentTime = new Date();
 
-        updateOrCreatePrice(cardID.toString(), currentPrice, currentTime);
+        updateOrCreatePrice(
+          cardID.toString(),
+          Number(currentPrice),
+          formatDate(currentTime)
+        );
 
         const currentSellerShares = await loadUserShares(
           Number(cardID),
