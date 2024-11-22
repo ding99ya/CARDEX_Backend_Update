@@ -1,6 +1,15 @@
 const mongoose = require("mongoose");
 const CardModel = require("./models/CardModel.js");
+const CardHistoryScoreModel = require("./models/CardHistoryScoreModel.js");
 require("dotenv").config();
+
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 (async () => {
   try {
@@ -14,8 +23,15 @@ require("dotenv").config();
     // Fetch all card documents
     const cards = await CardModel.find();
 
-    // Prepare bulk operations to update each card
-    const bulkOps = cards.map((card) => {
+    const largestDayScore = cards.reduce((max, item) => {
+      return item.dayScore > max ? item.dayScore : max;
+    }, 0);
+
+    const bulkOps1 = [];
+
+    const bulkOps2 = [];
+
+    cards.forEach((card) => {
       const cardIPOTime = new Date(card.ipoTime);
       const currentTime = new Date();
 
@@ -23,10 +39,22 @@ require("dotenv").config();
         (currentTime - cardIPOTime) / (24 * 1000 * 60 * 60)
       );
 
-      const newAvgScore = Number(
-        (card.avgScore * differenceInDays + card.dayScore) /
-          (differenceInDays + 1)
-      ).toFixed(2);
+      let modifiedDayScore;
+
+      if (largestDayScore === 0) {
+        modifiedDayScore = Math.floor(Math.random() * 101);
+      } else {
+        modifiedDayScore =
+          Math.floor(Math.random() * 36) +
+          Math.floor((card.dayScore * 65) / largestDayScore);
+      }
+
+      const newAvgScore = Math.floor(
+        Number(
+          (card.avgScore * differenceInDays + modifiedDayScore) /
+            (differenceInDays + 1)
+        )
+      );
 
       const newCurrentScore = newAvgScore;
 
@@ -36,16 +64,28 @@ require("dotenv").config();
 
       const currentDay = cstTime.getDay();
 
-      const tournamentStartDays = currentDay - 1;
+      const tournamentStartDays = currentDay - 4;
 
-      const newAvgTournamentScore = Number(
-        (card.avgTournamentScore * tournamentStartDays + card.dayScore) /
-          (tournamentStartDays + 1)
-      ).toFixed(2);
+      let newAvgTournamentScore;
 
-      const newCurrentTournamentScore = newAvgTournamentScore;
+      let newCurrentTournamentScore;
 
-      return {
+      if (currentDay === 5 || currentDay === 6 || currentDay === 0) {
+        newAvgTournamentScore = Math.floor(
+          Number(
+            (card.avgTournamentScore * tournamentStartDays +
+              card.currentTournamentScore) /
+              (tournamentStartDays + 1)
+          )
+        );
+
+        newCurrentTournamentScore = newAvgTournamentScore;
+      } else {
+        newAvgTournamentScore = card.avgTournamentScore;
+        newCurrentTournamentScore = card.currentTournamentScore;
+      }
+
+      bulkOps1.push({
         updateOne: {
           filter: { _id: card._id },
           update: {
@@ -58,16 +98,38 @@ require("dotenv").config();
             },
           },
         },
-      };
+      });
+
+      bulkOps2.push({
+        updateOne: {
+          filter: { uniqueId: card.uniqueId },
+          update: {
+            $push: {
+              historyScore: {
+                time: formatDate(cstTime),
+                score: modifiedDayScore,
+              },
+            },
+            $setOnInsert: { uniqueId: card.uniqueId },
+          },
+          upsert: true,
+        },
+      });
     });
 
     // Execute bulk update operations
-    if (bulkOps.length > 0) {
-      await CardModel.bulkWrite(bulkOps);
+    if (bulkOps1.length > 0) {
+      await CardModel.bulkWrite(bulkOps1);
       console.log("Card scores updated successfully");
-      console.log("Script started at:", new Date().toString());
     } else {
-      console.log("No cards found for updating.");
+      console.log("No cards score found for updating.");
+    }
+
+    if (bulkOps2.length > 0) {
+      await CardHistoryScoreModel.bulkWrite(bulkOps2);
+      console.log("Card scores history updated successfully");
+    } else {
+      console.log("No cards scores history found for updating.");
     }
   } catch (error) {
     console.error("Error updating card scores:", error);

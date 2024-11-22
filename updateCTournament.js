@@ -1,99 +1,146 @@
 const mongoose = require("mongoose");
-const CTournamentModel = require("./models/CTournamentModel.js");
 const CardModel = require("./models/CardModel.js");
+const CTournamentModel = require("./models/CTournamentModel.js");
 
 require("dotenv").config();
 
+// Connect to the MongoDB database
 mongoose
-  .connect(process.env.MONGO_URL)
-  .then(() => console.log("MongoDB connected successfully"))
+  .connect(process.env.MONGO_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Listen to changes in the "cards" collection
-mongoose.connection.on("connected", () => {
-  console.log("Connected to MongoDB. Listening for changes...");
-  CardModel.watch().on("change", async (change) => {
-    if (
-      change.operationType === "update" &&
-      change.updateDescription.updatedFields.hasOwnProperty(
-        "currentTournamentScore"
-      )
-    ) {
-      console.log("Tournament Score Change detected...");
-      const updatedScore =
-        change.updateDescription.updatedFields.currentTournamentScore;
+const updateScores = async () => {
+  try {
+    // Step 1: Find the largest dayScore in the "cards" collection
+    const largestDayScore = await CardModel.findOne()
+      .sort({ dayScore: -1 })
+      .select("dayScore -_id")
+      .lean();
 
-      const updatedCard = await CardModel.findById(
-        change.documentKey._id.toString()
-      );
+    if (!largestDayScore) {
+      console.log("No cards found.");
+      return;
+    }
 
-      const { uniqueId } = updatedCard;
+    const maxDayScore = largestDayScore.dayScore;
 
-      // Step 1: Find all CTournament entries that contain this uniqueId in their deck
-      const tournamentsToUpdate = await CTournamentModel.find({
-        "deck.uniqueId": uniqueId,
-      });
+    // Step 1.1: Compute the "currentTournamentScore" for all cards
+    const cardUpdates = await CardModel.find().lean();
+    const cardScoreMap = {}; // Hash table for storing currentTournamentScore by uniqueId
+    const cardBulkOps = cardUpdates.map((card) => {
+      let currentTournamentScore;
 
-      const bulkOps = tournamentsToUpdate.map((tournament) => {
-        // Update the `currentTournamentScore` for each relevant card in the deck
-        tournament.deck.forEach((card) => {
-          if (card.uniqueId === uniqueId) {
-            card.currentTournamentScore = updatedScore;
-          }
-        });
+      if (maxDayScore === 0) {
+        currentTournamentScore = Math.floor(Math.random() * 101);
+      } else {
+        currentTournamentScore =
+          Math.floor(Math.random() * 36) +
+          Math.floor((card.dayScore * 65) / maxDayScore);
+      }
 
-        // Recalculate the totalTournamentScore with rarity-based multipliers
-        tournament.totalTournamentScore = tournament.deck.reduce(
-          (total, card) => {
-            const multiplier =
-              card.rarity === "LEGEND" ? 2 : card.rarity === "EPIC" ? 1.5 : 1;
-            return total + card.currentTournamentScore * multiplier;
-          },
-          0
-        );
+      cardScoreMap[card.uniqueId] = currentTournamentScore; // Store in hash table for step 2
+      return {
+        updateOne: {
+          filter: { _id: card._id },
+          update: { $set: { currentTournamentScore } },
+        },
+      };
+    });
 
-        // Add the update operation to the bulk write array
+    // Perform bulk update for "cards"
+    if (cardBulkOps.length > 0) {
+      await CardModel.bulkWrite(cardBulkOps);
+      console.log("Updated currentTournamentScore for all cards.");
+    }
+
+    // Step 2: Update "deck" and "totalTournamentScore" in CTournament
+    const tournamentUpdates = await CTournamentModel.find().lean();
+    const tournamentBulkOps = tournamentUpdates.map((tournament) => {
+      let totalTournamentScore = 0;
+
+      const updatedDeck = tournament.deck.map((card) => {
+        const cardScore = cardScoreMap[card.uniqueId] || 0; // Use hash table for efficiency
+        const rarityFactor =
+          card.rarity === "LEGEND" ? 2 : card.rarity === "EPIC" ? 1.5 : 1; // Determine rarity factor
+        totalTournamentScore += cardScore * rarityFactor;
         return {
-          updateOne: {
-            filter: { _id: tournament._id },
-            update: {
-              $set: {
-                deck: tournament.deck,
-                totalTournamentScore: tournament.totalTournamentScore,
-              },
-            },
-          },
+          ...card,
+          currentTournamentScore: cardScore, // Update currentTournamentScore in deck
         };
       });
 
-      // Step 2: Perform bulk write to update all affected tournaments
-      if (bulkOps.length > 0) {
-        console.log("Ready to write");
-        await CTournamentModel.bulkWrite(bulkOps);
-      }
+      return {
+        updateOne: {
+          filter: { _id: tournament._id },
+          update: {
+            $set: {
+              deck: updatedDeck,
+              totalTournamentScore: Math.floor(totalTournamentScore),
+            },
+          },
+        },
+      };
+    });
 
-      // Step 3: Update ranks across all CTournament entries based on totalTournamentScore
-      await updateRanks();
+    // Perform bulk update for "CTournament"
+    if (tournamentBulkOps.length > 0) {
+      await CTournamentModel.bulkWrite(tournamentBulkOps);
+      console.log("Updated deck and totalTournamentScore for all tournaments.");
     }
-  });
-});
 
-// Helper function to update ranks based on `totalTournamentScore`
-async function updateRanks() {
-  const tournaments = await CTournamentModel.find().sort({
-    totalTournamentScore: -1,
-  });
+    console.log("Scores updated successfully!");
 
-  // Prepare bulk operations for rank updates
-  const rankOps = tournaments.map((tournament, index) => ({
-    updateOne: {
-      filter: { _id: tournament._id },
-      update: { $set: { rank: index + 1 } },
-    },
-  }));
+    // Step 3: Compute and update ranks
+    const updatedTournaments = await CTournamentModel.find()
+      .sort({ totalTournamentScore: -1 }) // Sort by score in descending order
+      .lean();
 
-  // Execute the rank updates in a single bulk write operation
-  if (rankOps.length > 0) {
-    await CTournamentModel.bulkWrite(rankOps);
+    const rankBulkOps = updatedTournaments.map((tournament, index) => ({
+      updateOne: {
+        filter: { _id: tournament._id },
+        update: { $set: { rank: index + 1 } }, // Rank starts from 1
+      },
+    }));
+
+    if (rankBulkOps.length > 0) {
+      await CTournamentModel.bulkWrite(rankBulkOps);
+      console.log("Updated ranks for all tournaments.");
+    }
+
+    console.log("Scores and ranks updated successfully!");
+  } catch (error) {
+    console.error("Error updating scores:", error);
+  } finally {
+    mongoose.connection.close();
   }
-}
+};
+
+const runUpdateScoresIfAllowed = () => {
+  const currentTime = new Date();
+  const chicagoTime = new Date(
+    currentTime.toLocaleString("en-US", { timeZone: "America/Chicago" })
+  );
+
+  const currentDay = chicagoTime.getDay(); // 0: Sunday, 1: Monday, ..., 6: Saturday
+  const currentHour = chicagoTime.getHours(); // 0-23
+
+  // Check if the current time is within Thursday 12:00 PM to Sunday 12:00 PM
+  const isWithinAllowedWindow =
+    (currentDay === 4 && currentHour >= 12) || // Thursday after 12:00 PM
+    (currentDay > 4 && currentDay < 7) || // Friday to Saturday
+    (currentDay === 0 && currentHour < 12); // Sunday before 12:00 PM
+
+  if (isWithinAllowedWindow) {
+    console.log("Within the allowed time window. Running updateScores...");
+    updateScores();
+  } else {
+    console.log("Not within the allowed time window. Skipping updateScores.");
+  }
+};
+
+// Call this function instead of directly calling updateScores
+runUpdateScoresIfAllowed();

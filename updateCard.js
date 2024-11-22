@@ -146,38 +146,51 @@ const updateCardScore = async (uniqueId, shares) => {
       deltaScore = 36 * shares;
     }
 
-    const newDailyScore = card.dayScore + deltaScore;
+    const newDayScore = card.dayScore + deltaScore;
 
-    // In production need to calculate after 3 days price stable period
+    const largestDayScoreCard = await Card.findOne()
+      .sort({ dayScore: -1 })
+      .select("dayScore -_id")
+      .lean();
+
+    let largestDayScore = largestDayScoreCard.dayScore;
+
+    largestDayScore =
+      newDayScore > largestDayScore ? newDayScore : largestDayScore;
+
+    const modifiedDayScore = Math.floor((newDayScore * 100) / largestDayScore);
+
     const differenceInDays = Math.floor(
       (currentTime - cardIPOTime) / (24 * 1000 * 60 * 60)
     );
 
-    const newCurrentScore = Number(
-      (card.avgScore * differenceInDays + newDailyScore) /
-        (differenceInDays + 1)
-    ).toFixed(2);
-
-    // Convert current time to US CST (Central Standard Time)
-    const cstTime = new Date(
-      currentTime.toLocaleString("en-US", { timeZone: "America/Chicago" })
+    const newCurrentScore = Math.floor(
+      Number(
+        (card.avgScore * differenceInDays + modifiedDayScore) /
+          (differenceInDays + 1)
+      )
     );
 
-    const currentDay = cstTime.getDay(); // 0 is Sunday, 6 is Saturday
-    const currentHour = cstTime.getHours(); // Get the hour in CST
+    // Convert current time to US CST (Central Standard Time)
+    // const cstTime = new Date(
+    //   currentTime.toLocaleString("en-US", { timeZone: "America/Chicago" })
+    // );
 
-    let newCurrentTournamentScore = card.currentTournamentScore;
+    // const currentDay = cstTime.getDay(); // 0 is Sunday, 6 is Saturday
+    // const currentHour = cstTime.getHours(); // Get the hour in CST
+
+    // let newCurrentTournamentScore = card.currentTournamentScore;
 
     // if (
     //   (currentDay > 0 && currentDay < 4) ||
     //   (currentDay === 4 && currentHour < 12)
     // ) {
-    const tournamentStartDays = currentDay - 1;
+    // const tournamentStartDays = currentDay - 1;
 
-    newCurrentTournamentScore = Number(
-      (card.avgTournamentScore * tournamentStartDays + newDailyScore) /
-        (tournamentStartDays + 1)
-    ).toFixed(2);
+    // newCurrentTournamentScore = Number(
+    //   (card.avgTournamentScore * tournamentStartDays + newDailyScore) /
+    //     (tournamentStartDays + 1)
+    // ).toFixed(2);
     // }
 
     await Card.updateOne(
@@ -185,8 +198,7 @@ const updateCardScore = async (uniqueId, shares) => {
       {
         $set: {
           currentScore: newCurrentScore,
-          currentTournamentScore: newCurrentTournamentScore,
-          dayScore: newDailyScore,
+          dayScore: newDayScore,
         },
       }
     );
